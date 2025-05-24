@@ -28,3 +28,25 @@ void createTable() {
     );)";
     executeSQL(sql);
 }
+
+void menu() {
+    cout << "\n1. Add Bug\n2. List Bugs\n3. Update Bug\n4. Delete Bug\n5. Exit\nChoice: ";
+}
+
+int main() {
+    int rc = sqlite3_open("bugs.db", &db);
+    if (rc) {
+        cerr << "Can't open database: " << sqlite3_errmsg(db) << endl;
+        return 1;
+    }
+
+    createTable();
+    string choice;
+
+    while (true) {
+        menu();
+    }
+
+    sqlite3_close(db);
+    return 0;
+}
