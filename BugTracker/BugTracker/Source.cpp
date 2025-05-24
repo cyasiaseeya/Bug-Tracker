@@ -33,6 +33,49 @@ void menu() {
     cout << "\n1. Add Bug\n2. List Bugs\n3. Update Bug\n4. Delete Bug\n5. Exit\nChoice: ";
 }
 
+void addBug() {
+    string title, description, priority;
+    cout << "Title: "; getline(cin, title);
+    cout << "Description: "; getline(cin, description);
+    cout << "Priority (Low, Medium, High): "; getline(cin, priority);
+
+    string sql = "INSERT INTO bugs (Title, Description, Priority) VALUES ('" +
+        title + "', '" + description + "', '" + priority + "');";
+    executeSQL(sql);
+    cout << "Bug added.\n";
+}
+
+int callback(void* NotUsed, int argc, char** argv, char** azColName) {
+    for (int i = 0; i < argc; i++)
+        cout << azColName[i] << ": " << (argv[i] ? argv[i] : "NULL") << endl;
+    cout << "------------------------\n";
+    return 0;
+}
+
+void listBugs() {
+    string sql = "SELECT * FROM bugs;";
+    sqlite3_exec(db, sql.c_str(), callback, nullptr, nullptr);
+}
+
+void updateBug() {
+    string id, newStatus;
+    cout << "Bug ID to update: "; getline(cin, id);
+    cout << "New Status (Open/In Progress/Resolved): "; getline(cin, newStatus);
+
+    string sql = "UPDATE bugs SET status = '" + newStatus + "' WHERE ID = " + id + ";";
+    executeSQL(sql);
+    cout << "Bug updated.\n";
+}
+
+void deleteBug() {
+    string id;
+    cout << "Bug ID to delete: "; getline(cin, id);
+
+    string sql = "DELETE FROM bugs WHERE ID = " + id + ";";
+    executeSQL(sql);
+    cout << "Bug deleted.\n";
+}
+
 int main() {
     int rc = sqlite3_open("bugs.db", &db);
     if (rc) {
