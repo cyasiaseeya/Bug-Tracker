@@ -29,10 +29,6 @@ void createTable() {
     executeSQL(sql);
 }
 
-void menu() {
-    cout << "\n1. Add Bug\n2. List Bugs\n3. Update Bug\n4. Delete Bug\n5. Exit\nChoice: ";
-}
-
 void addBug() {
     string title, description, priority;
     cout << "Title: "; getline(cin, title);
@@ -76,6 +72,10 @@ void deleteBug() {
     cout << "Bug deleted.\n";
 }
 
+void menu() {
+    cout << "\n1. Add Bug\n2. List Bugs\n3. Update Bug\n4. Delete Bug\n5. Exit\nChoice: ";
+}
+
 int main() {
     int rc = sqlite3_open("bugs.db", &db);
     if (rc) {
@@ -88,8 +88,16 @@ int main() {
 
     while (true) {
         menu();
+        getline(cin, choice);
+        if (choice == "1") addBug();
+        else if (choice == "2") listBugs();
+        else if (choice == "3") updateBug();
+        else if (choice == "4") deleteBug();
+        else if (choice == "5") break;
+        else cout << "Invalid option.\n";
     }
 
     sqlite3_close(db);
     return 0;
 }
+
