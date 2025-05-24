@@ -35,10 +35,27 @@ void addBug() {
     cout << "Description: "; getline(cin, description);
     cout << "Priority (Low, Medium, High): "; getline(cin, priority);
 
-    string sql = "INSERT INTO bugs (Title, Description, Priority) VALUES ('" +
-        title + "', '" + description + "', '" + priority + "');";
-    executeSQL(sql);
-    cout << "Bug added.\n";
+    sqlite3_stmt* stmt;
+    const char* sql = "INSERT INTO bugs (Title, Description, Priority) VALUES (?, ?, ?);";
+    
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << endl;
+        return;
+    }
+
+    sqlite3_bind_text(stmt, 1, title.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, description.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, priority.c_str(), -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        cerr << "Failed to insert bug: " << sqlite3_errmsg(db) << endl;
+    } else {
+        cout << "Bug added.\n";
+    }
+
+    sqlite3_finalize(stmt);
 }
 
 int callback(void* NotUsed, int argc, char** argv, char** azColName) {
