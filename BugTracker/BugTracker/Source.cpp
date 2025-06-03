@@ -3,6 +3,8 @@ extern "C" {
 }
 #include <iostream>
 #include <string>
+#include <algorithm>
+#include <regex>
 
 using namespace std;
 
@@ -29,11 +31,61 @@ void createTable() {
     executeSQL(sql);
 }
 
+// Validation functions
+bool isValidTitle(const string& title) {
+    // Title should not be empty and should be less than 100 characters
+    return !title.empty() && title.length() <= 100;
+}
+
+bool isValidDescription(const string& description) {
+    // Description should not be empty and should be less than 1000 characters
+    return !description.empty() && description.length() <= 1000;
+}
+
+bool isValidPriority(const string& priority) {
+    // Convert to lowercase for case-insensitive comparison
+    string lowerPriority = priority;
+    transform(lowerPriority.begin(), lowerPriority.end(), lowerPriority.begin(), ::tolower);
+    return lowerPriority == "low" || lowerPriority == "medium" || lowerPriority == "high";
+}
+
+bool isValidStatus(const string& status) {
+    // Convert to lowercase for case-insensitive comparison
+    string lowerStatus = status;
+    transform(lowerStatus.begin(), lowerStatus.end(), lowerStatus.begin(), ::tolower);
+    return lowerStatus == "open" || lowerStatus == "in progress" || lowerStatus == "resolved";
+}
+
+bool isValidBugId(const string& id) {
+    // Check if the ID is a positive integer
+    regex idPattern("^[1-9][0-9]*$");
+    return regex_match(id, idPattern);
+}
+
+string getValidInput(const string& prompt, const string& errorMsg, bool (*validator)(const string&)) {
+    string input;
+    while (true) {
+        cout << prompt;
+        getline(cin, input);
+        if (validator(input)) {
+            return input;
+        }
+        cout << errorMsg << endl;
+    }
+}
+
 void addBug() {
-    string title, description, priority;
-    cout << "Title: "; getline(cin, title);
-    cout << "Description: "; getline(cin, description);
-    cout << "Priority (Low, Medium, High): "; getline(cin, priority);
+    string title = getValidInput("Title: ", 
+        "Invalid title. Title must not be empty and must be less than 100 characters.", 
+        isValidTitle);
+    
+    string description = getValidInput("Description: ", 
+        "Invalid description. Description must not be empty and must be less than 1000 characters.", 
+        isValidDescription);
+    
+    string priority = getValidInput("Priority (Low, Medium, High): ", 
+        "Invalid priority. Please enter Low, Medium, or High.", 
+        isValidPriority);
 
     sqlite3_stmt* stmt;
     const char* sql = "INSERT INTO bugs (Title, Description, Priority) VALUES (?, ?, ?);";
@@ -71,22 +123,60 @@ void listBugs() {
 }
 
 void updateBug() {
-    string id, newStatus;
-    cout << "Bug ID to update: "; getline(cin, id);
-    cout << "New Status (Open/In Progress/Resolved): "; getline(cin, newStatus);
+    string id = getValidInput("Bug ID to update: ", 
+        "Invalid ID. Please enter a positive number.", 
+        isValidBugId);
+    
+    string newStatus = getValidInput("New Status (Open/In Progress/Resolved): ", 
+        "Invalid status. Please enter Open, In Progress, or Resolved.", 
+        isValidStatus);
 
-    string sql = "UPDATE bugs SET status = '" + newStatus + "' WHERE ID = " + id + ";";
-    executeSQL(sql);
-    cout << "Bug updated.\n";
+    sqlite3_stmt* stmt;
+    const char* sql = "UPDATE bugs SET status = ? WHERE ID = ?;";
+    
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << endl;
+        return;
+    }
+
+    sqlite3_bind_text(stmt, 1, newStatus.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, id.c_str(), -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        cerr << "Failed to update bug: " << sqlite3_errmsg(db) << endl;
+    } else {
+        cout << "Bug updated.\n";
+    }
+
+    sqlite3_finalize(stmt);
 }
 
 void deleteBug() {
-    string id;
-    cout << "Bug ID to delete: "; getline(cin, id);
+    string id = getValidInput("Bug ID to delete: ", 
+        "Invalid ID. Please enter a positive number.", 
+        isValidBugId);
 
-    string sql = "DELETE FROM bugs WHERE ID = " + id + ";";
-    executeSQL(sql);
-    cout << "Bug deleted.\n";
+    sqlite3_stmt* stmt;
+    const char* sql = "DELETE FROM bugs WHERE ID = ?;";
+    
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << endl;
+        return;
+    }
+
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        cerr << "Failed to delete bug: " << sqlite3_errmsg(db) << endl;
+    } else {
+        cout << "Bug deleted.\n";
+    }
+
+    sqlite3_finalize(stmt);
 }
 
 void menu() {
