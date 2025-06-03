@@ -122,10 +122,36 @@ void listBugs() {
     sqlite3_exec(db, sql.c_str(), callback, nullptr, nullptr);
 }
 
+bool bugExists(const string& id) {
+    sqlite3_stmt* stmt;
+    const char* sql = "SELECT COUNT(*) FROM bugs WHERE ID = ?;";
+    
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << endl;
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    
+    bool exists = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        exists = sqlite3_column_int(stmt, 0) > 0;
+    }
+    
+    sqlite3_finalize(stmt);
+    return exists;
+}
+
 void updateBug() {
     string id = getValidInput("Bug ID to update: ", 
         "Invalid ID. Please enter a positive number.", 
         isValidBugId);
+    
+    if (!bugExists(id)) {
+        cout << "Error: Bug with ID " << id << " does not exist.\n";
+        return;
+    }
     
     string newStatus = getValidInput("New Status (Open/In Progress/Resolved): ", 
         "Invalid status. Please enter Open, In Progress, or Resolved.", 
@@ -157,6 +183,11 @@ void deleteBug() {
     string id = getValidInput("Bug ID to delete: ", 
         "Invalid ID. Please enter a positive number.", 
         isValidBugId);
+
+    if (!bugExists(id)) {
+        cout << "Error: Bug with ID " << id << " does not exist.\n";
+        return;
+    }
 
     sqlite3_stmt* stmt;
     const char* sql = "DELETE FROM bugs WHERE ID = ?;";
